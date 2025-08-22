@@ -384,7 +384,7 @@ const createToken = async () => {
     console.log('Creating token with data:', tokenData)
 
     // 4. Отправляем запрос на создание токена
-    const result = await fetch('http://localhost:3001/api/create-token', {
+    const result = await fetch('http://localhost:3000/api/bonding-curve/create-real-token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -406,10 +406,8 @@ const createToken = async () => {
       console.log('Transaction:', data.transaction_signature)
       
       // Показываем результат пользователю
-      alert(`Токен создан успешно!\n\nMint: ${data.mint_address}\nToken Account: ${data.token_account}\nТранзакция: ${data.transaction_signature}`)
       
-      // Открываем в Solana Explorer
-      window.open(data.explorer_url, '_blank')
+      
 
       // Reset form after successful creation
       formData.value = {
