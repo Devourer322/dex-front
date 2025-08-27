@@ -624,7 +624,13 @@
       <div class="top-holders-section">
         <div class="top-holders-container">
           <div class="holders-header">
-            <h3 class="holders-title">Top holders</h3>
+            <div class="holders-title-section">
+              <h3 class="holders-title">Top holders</h3>
+              <div v-if="isHoldersUpdating" class="updating-indicator">
+                <div class="updating-spinner"></div>
+                <span>Updating...</span>
+              </div>
+            </div>
             <button class="bubble-map-btn">Generate bubble map</button>
           </div>
           
@@ -649,6 +655,7 @@
               v-for="holder in topHoldersData" 
               :key="holder.holder_address"
               class="holder-item"
+              :class="{ 'updated': holder.isNewlyUpdated }"
             >
               <span class="holder-rank">{{ holder.rank }}.</span>
               <span class="holder-type" :class="{ 'bonding-curve': holder.is_bonding_curve }">
@@ -707,6 +714,7 @@ const hasChartData = ref(false)
 const websocket = ref(null)
 const isWebSocketConnected = ref(false)
 const websocketError = ref(null)
+const isHoldersUpdating = ref(false)
 
 // Trading state
 const tradeAmount = ref('')
@@ -1432,7 +1440,7 @@ const connectWebSocket = (mintAddress) => {
     console.log('🔌 Connecting to WebSocket for token:', mintAddress)
     
     // Connect to WebSocket server
-    websocket.value = new WebSocket(`ws://localhost:3000/websocket`)
+    websocket.value = new WebSocket(`wss://launchpad-wl8n.onrender.com/websocket`)
     
     websocket.value.onopen = () => {
       console.log('✅ WebSocket connected successfully')
@@ -1464,6 +1472,12 @@ const connectWebSocket = (mintAddress) => {
             timestamp: data.timestamp
           })
           
+          // Update top holders immediately if data is provided
+          if (data.updatedHolders) {
+            console.log('🏆 Updating top holders with new data from WebSocket')
+            updateTopHolders(data.updatedHolders)
+          }
+          
           // Refresh chart data when new transaction occurs
           refreshChartData(mintAddress)
           
@@ -1475,6 +1489,12 @@ const connectWebSocket = (mintAddress) => {
             user: data.user,
             timestamp: data.timestamp
           })
+          
+          // Update top holders immediately if data is provided
+          if (data.updatedHolders) {
+            console.log('🏆 Updating top holders with new data from WebSocket')
+            updateTopHolders(data.updatedHolders)
+          }
           
           // Refresh chart data when new transaction occurs
           refreshChartData(mintAddress)
@@ -1537,16 +1557,83 @@ const refreshChartData = async (mintAddress) => {
   // Reload transaction data
   await loadTransactionData(mintAddress)
   
-  // Update chart if it exists
-  if (chart.value && chartCandleData.value.length > 0) {
-    candlestickSeries.value.setData(chartCandleData.value)
-    volumeSeries.value.setData(chartVolumeData.value)
+  // Reload top holders data (important for buy/sell updates)
+  console.log('👥 Refreshing top holders data...')
+  await loadTopHoldersData(mintAddress)
+  
+  // Check if we now have data after refresh
+  if (chartCandleData.value.length > 0) {
+    console.log('✅ Chart data available after refresh, updating chart...')
     
-    // Add trade markers if enabled
-    if (showTradeDisplay.value) {
-      addTradeMarkers()
+    // If chart doesn't exist yet, initialize it
+    if (!chart.value) {
+      console.log('📈 Chart not initialized yet, initializing now...')
+      await nextTick()
+      setTimeout(() => {
+        initializeChart()
+        isChartLoading.value = false
+      }, 100)
+    } else {
+      // Chart exists, update the data
+      console.log('📈 Updating existing chart with new data...')
+      candlestickSeries.value.setData(chartCandleData.value)
+      volumeSeries.value.setData(chartVolumeData.value)
+      
+      // Add trade markers if enabled
+      if (showTradeDisplay.value) {
+        addTradeMarkers()
+      }
+      
+      // Force chart to fit content to the new data range
+      setTimeout(() => {
+        if (chart.value) {
+          chart.value.timeScale().fitContent()
+        }
+      }, 100)
     }
+  } else {
+    console.log('⚠️ Still no chart data available after refresh')
   }
+}
+
+// Function to update top holders with WebSocket data
+const updateTopHolders = (newHolders) => {
+  if (newHolders && Array.isArray(newHolders)) {
+    console.log('🏆 Updating top holders with WebSocket data:', newHolders.length, 'holders')
+    
+    isHoldersUpdating.value = true
+    
+    // Add flag for animation
+    const holdersWithFlag = newHolders.map(holder => ({
+      ...holder,
+      isNewlyUpdated: true
+    }))
+    
+    // Update top holders data
+    topHoldersData.value = holdersWithFlag
+    
+    // Remove flag after 2 seconds
+    setTimeout(() => {
+      topHoldersData.value = topHoldersData.value.map(holder => ({
+        ...holder,
+        isNewlyUpdated: false
+      }))
+      isHoldersUpdating.value = false
+    }, 2000)
+    
+    // Show notification
+    showNotification('Top holders updated!', 'success')
+    
+    console.log('✅ Top holders updated successfully from WebSocket')
+  }
+}
+
+// Function to show notifications
+const showNotification = (message, type = 'info') => {
+  console.log(`🔔 ${type.toUpperCase()}: ${message}`)
+  
+  // You can implement your own notification system here
+  // For now, we'll just log to console
 }
 
 // Methods
@@ -1809,7 +1896,7 @@ const loadTokenData = async (mintAddress) => {
     isTokenLoading.value = true
     tokenLoadError.value = null
 
-    const response = await fetch(`http://localhost:3000/api/token/coin/${mintAddress}`)
+    const response = await fetch(`https://launchpad-wl8n.onrender.com/api/token/coin/${mintAddress}`)
     
     if (!response.ok) {
       throw new Error(`Failed to load token data: ${response.status}`)
@@ -1924,7 +2011,7 @@ const loadMarketCapData = async (mintAddress) => {
   try {
     console.log('🔄 Loading market cap data for mint:', mintAddress)
     
-    const response = await fetch(`http://localhost:3000/api/token/price/${mintAddress}`)
+    const response = await fetch(`https://launchpad-wl8n.onrender.com/api/token/price/${mintAddress}`)
     
     if (!response.ok) {
       throw new Error(`Failed to load market cap data: ${response.status}`)
@@ -1967,7 +2054,7 @@ const loadTopHoldersData = async (mintAddress) => {
 
     console.log('🔄 Loading top holders data for mint:', mintAddress)
 
-    const response = await fetch(`http://localhost:3000/api/websocket/holders/top/${mintAddress}`)
+    const response = await fetch(`https://launchpad-wl8n.onrender.com/api/websocket/holders/top/${mintAddress}`)
     
     if (!response.ok) {
       throw new Error(`Failed to load top holders data: ${response.status}`)
@@ -2092,7 +2179,7 @@ const loadTransactionData = async (mintAddress) => {
 
     console.log('🔄 Loading transaction data for mint:', mintAddress)
 
-    const response = await fetch(`http://localhost:3000/api/websocket/database/trades/mint/${mintAddress}?limit=1000`)
+    const response = await fetch(`https://launchpad-wl8n.onrender.com/api/websocket/database/trades/mint/${mintAddress}?limit=1000`)
     
     if (!response.ok) {
       throw new Error(`Failed to load transaction data: ${response.status}`)
@@ -2499,7 +2586,7 @@ async function buyToken() {
     });
 
     // Send request to buy API endpoint
-    const response = await fetch(`http://localhost:3000/api/token/buy/${mintAddress}`, {
+    const response = await fetch(`https://launchpad-wl8n.onrender.com/api/token/buy/${mintAddress}`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json'
@@ -2584,21 +2671,18 @@ async function buyToken() {
     // Confirm transaction
     await connection.confirmTransaction(signature);
     
-    // Show success message with transaction details
-    alert(`✅ Purchase successful!\n\n` +
-          `Amount: ${transactionDetails.amount} tokens\n` +
-          `SOL spent: ${transactionDetails.solAmount}\n` +
-          `Price: ${transactionDetails.currentPrice}\n` +
-          `Min tokens received: ${transactionDetails.minTokensToReceive}\n\n` +
-          `Transaction: ${signature}`);
     
     // Clear the input
     tradeAmount.value = '';
     
-    // Optionally refresh token data
+    // Refresh token data and top holders after successful transaction
     const mintAddressParam = route.params.mint_address;
     if (mintAddressParam) {
+      console.log('🔄 Refreshing data after successful buy transaction...')
       await loadTokenData(mintAddressParam);
+      await loadMarketCapData(mintAddressParam);
+      await loadTopHoldersData(mintAddressParam);
+      console.log('✅ Data refreshed after buy transaction')
     }
 
   } catch (error) {
@@ -2674,7 +2758,7 @@ async function sellToken() {
     });
 
     // Send request to sell API endpoint
-    const response = await fetch(`http://localhost:3000/api/token/sell/${mintAddress}`, {
+    const response = await fetch(`https://launchpad-wl8n.onrender.com/api/token/sell/${mintAddress}`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json'
@@ -2755,10 +2839,14 @@ async function sellToken() {
     // Clear the input
     tradeAmount.value = '';
     
-    // Optionally refresh token data
+    // Refresh token data and top holders after successful transaction
     const mintAddressParam = route.params.mint_address;
     if (mintAddressParam) {
+      console.log('🔄 Refreshing data after successful sell transaction...')
       await loadTokenData(mintAddressParam);
+      await loadMarketCapData(mintAddressParam);
+      await loadTopHoldersData(mintAddressParam);
+      console.log('✅ Data refreshed after sell transaction')
     }
 
   } catch (error) {
@@ -2839,11 +2927,11 @@ onMounted(async () => {
       isChartLoading.value = false
     }, 100)
   } else {
-    console.log('⚠️ No chart data available - showing "No data here"')
-    // No data - show empty chart with "No data here" message
+    console.log('⚠️ No chart data available initially - waiting for WebSocket data or showing "No data here"')
+    // No data initially - show empty chart with "No data here" message
+    // But don't set hasChartData to false yet, as WebSocket might bring data
     chartCandleData.value = []
     chartVolumeData.value = []
-    hasChartData.value = false
     
     await nextTick()
     setTimeout(() => {
@@ -4731,6 +4819,46 @@ input:checked + .toggle-slider:before {
 .retry-btn:hover {
   background: rgba(66, 184, 131, 0.2);
   transform: translateY(-1px);
+}
+
+/* Top holders updating animation styles */
+.holders-title-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.updating-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #10b981;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.updating-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #e5e7eb;
+  border-top: 2px solid #10b981;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.holder-item {
+  transition: all 0.3s ease;
+}
+
+.holder-item.updated {
+  background-color: rgba(16, 185, 129, 0.1);
+  border-left: 3px solid #10b981;
+  transform: translateX(4px);
 }
 
 /* Mobile Styles */

@@ -18,8 +18,13 @@ const routes = [
     component: Dashboard
   },
   {
-    path: '/portfolio',
+    path: '/profile/:address',
     name: 'Portfolio',
+    component: UserProfile
+  },
+  {
+    path: '/profile',
+    name: 'PortfolioDefault',
     component: UserProfile
   },
   {

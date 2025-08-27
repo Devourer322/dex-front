@@ -1,27 +1,76 @@
 <template>
   <div class="user-profile">
-    <div class="profile-container">
+    <!-- Loading State -->
+    <div v-if="isLoading" class="loading-container">
+      <div class="loading-spinner"></div>
+      <span class="loading-text">Загрузка профиля...</span>
+    </div>
+
+    <!-- Error State -->
+    <div v-else-if="error" class="error-container">
+      <div class="error-content">
+        <svg class="error-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <h3 class="error-title">Ошибка загрузки профиля</h3>
+        <p class="error-message">{{ error }}</p>
+        <button class="retry-btn" @click="loadUserProfile">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+            <path d="M21 3v5h-5"/>
+            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+            <path d="M3 21v-5h5"/>
+          </svg>
+          Попробовать снова
+        </button>
+      </div>
+    </div>
+
+    <!-- Profile Content -->
+    <div v-else-if="userProfile" class="profile-container">
       <!-- Left Side - Profile Info -->
       <div class="profile-main">
         <!-- Profile Header -->
         <div class="profile-header">
           <div class="profile-avatar">
-            <img src="https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&dpr=1" alt="Profile" />
+            <img 
+              :src="userProfile.avatar_url || 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&dpr=1'" 
+              :alt="userProfile.username || 'Profile'" 
+            />
           </div>
           
           <div class="profile-info">
             <div class="profile-name-section">
-              <h1 class="profile-name">bananafan</h1>
+              <h1 class="profile-name">{{ userProfile.username || 'Unnamed User' }}</h1>
               <button class="edit-btn">edit</button>
             </div>
             
             <div class="profile-address">
-              <span class="address-text">QABFe...uhxr</span>
-              <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <span class="address-text">{{ formatWalletAddress(userProfile.wallet_address) }}</span>
+              <svg 
+                class="copy-icon" 
+                width="16" height="16" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+                @click="copyAddress"
+                style="cursor: pointer;"
+              >
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
               </svg>
-              <a href="#" class="view-link">view on solscan</a>
+              <a 
+                :href="`https://solscan.io/account/${userProfile.wallet_address}`" 
+                target="_blank" 
+                class="view-link"
+              >
+                view on solscan
+              </a>
               <svg class="external-link" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
                 <polyline points="15,3 21,3 21,9"/>
@@ -34,11 +83,11 @@
         <!-- Stats -->
         <div class="profile-stats">
           <div class="stat-item">
-            <span class="stat-number">0</span>
+            <span class="stat-number">{{ userProfile.followers_count || 0 }}</span>
             <span class="stat-label">followers</span>
           </div>
           <div class="stat-item">
-            <span class="stat-number">0</span>
+            <span class="stat-number">{{ userProfile.following_count || 0 }}</span>
             <span class="stat-label">following</span>
           </div>
           <div class="stat-item">
@@ -144,10 +193,18 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 
+const route = useRoute()
 const activeTab = ref('balances')
 
+// User profile state
+const userProfile = ref(null)
+const isLoading = ref(true)
+const error = ref(null)
+
+// Suggested users
 const suggestedUsers = ref([
   {
     id: 1,
@@ -181,9 +238,86 @@ const suggestedUsers = ref([
   }
 ])
 
+// Get wallet address from route params or Phantom
+const getWalletAddress = () => {
+  // Сначала пробуем получить из параметров маршрута
+  if (route.params.address) {
+    return route.params.address
+  }
+  
+  // Если нет в URL, пробуем получить из Phantom Wallet
+  if (window.solana && window.solana.isConnected && window.solana.publicKey) {
+    return window.solana.publicKey.toString()
+  }
+  
+  return null
+}
+
+// Load user profile from backend
+const loadUserProfile = async () => {
+  try {
+    isLoading.value = true
+    error.value = null
+
+    const walletAddress = getWalletAddress()
+    
+    if (!walletAddress) {
+      error.value = 'Адрес кошелька не найден. Пожалуйста, подключите Phantom Wallet или укажите адрес в URL.'
+      return
+    }
+
+    console.log('🔍 Загрузка профиля пользователя:', walletAddress)
+
+    const response = await fetch(`http://localhost:3000/api/user/profile/${walletAddress}`)
+    
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
+    }
+
+    const result = await response.json()
+    
+    if (result.success) {
+      console.log('✅ Профиль пользователя загружен:', result.data.user)
+      userProfile.value = result.data.user
+    } else {
+      throw new Error(result.message || 'Ошибка загрузки профиля')
+    }
+    
+  } catch (err) {
+    console.error('❌ Ошибка загрузки профиля:', err)
+    error.value = err.message
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// Copy wallet address to clipboard
+const copyAddress = async () => {
+  if (userProfile.value?.wallet_address) {
+    try {
+      await navigator.clipboard.writeText(userProfile.value.wallet_address)
+      console.log('✅ Адрес кошелька скопирован в буфер обмена')
+    } catch (err) {
+      console.error('❌ Ошибка копирования адреса:', err)
+    }
+  }
+}
+
+// Format wallet address for display
+const formatWalletAddress = (address) => {
+  if (!address) return ''
+  return `${address.slice(0, 6)}...${address.slice(-4)}`
+}
+
 const setActiveTab = (tab) => {
   activeTab.value = tab
 }
+
+// Load profile on component mount
+onMounted(() => {
+  loadUserProfile()
+})
 </script>
 
 <style scoped>
@@ -191,6 +325,96 @@ const setActiveTab = (tab) => {
   padding: 40px;
   max-width: 1400px;
   margin: 0 auto;
+}
+
+/* Loading State */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 20px;
+  gap: 16px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(66, 184, 131, 0.2);
+  border-top: 3px solid #42b883;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-text {
+  color: #9ca3af;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* Error State */
+.error-container {
+  display: flex;
+  justify-content: center;
+  padding: 64px 20px;
+}
+
+.error-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  max-width: 400px;
+}
+
+.error-icon {
+  color: #ef4444;
+  width: 48px;
+  height: 48px;
+}
+
+.error-title {
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.error-message {
+  color: #9ca3af;
+  font-size: 16px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.retry-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #42b883;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.retry-btn:hover {
+  background: #369870;
+  transform: translateY(-1px);
+}
+
+.retry-btn:active {
+  transform: translateY(0);
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .profile-container {
@@ -559,6 +783,19 @@ const setActiveTab = (tab) => {
 @media (max-width: 768px) {
   .user-profile {
     padding: 20px;
+  }
+  
+  .loading-container,
+  .error-container {
+    padding: 48px 20px;
+  }
+  
+  .error-title {
+    font-size: 20px;
+  }
+  
+  .error-message {
+    font-size: 14px;
   }
   
   .profile-container {

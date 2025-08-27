@@ -66,7 +66,7 @@ const loadTokens = async () => {
     isLoading.value = true
     error.value = null
 
-    const response = await fetch('http://localhost:3000/api/token/all')
+    const response = await fetch('https://launchpad-wl8n.onrender.com/api/token/all')
     
     if (!response.ok) {
       throw new Error(`Failed to load tokens: ${response.status}`)

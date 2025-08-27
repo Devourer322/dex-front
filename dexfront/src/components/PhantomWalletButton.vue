@@ -4,10 +4,12 @@
       v-if="!isConnected" 
       @click="connectWallet" 
       class="connect-btn"
-      :disabled="isConnecting"
+      :disabled="isConnecting || isCreatingUser"
     >
       <PhantomIcon class="wallet-icon" />
-      <span class="connect-text">{{ isConnecting ? 'Connecting...' : 'Connect Phantom' }}</span>
+      <span class="connect-text">
+        {{ isConnecting ? 'Connecting...' : isCreatingUser ? 'Creating user...' : 'Connect Phantom' }}
+      </span>
     </button>
     
     <div v-else class="wallet-connected">
@@ -17,6 +19,7 @@
         </div>
         <div class="wallet-details">
           <span class="wallet-address">{{ shortenAddress(walletAddress) }}</span>
+          <span v-if="userInfo?.username" class="wallet-username">{{ userInfo.username }}</span>
           <span class="wallet-balance">{{ balance }} SOL</span>
         </div>
       </div>
@@ -43,8 +46,59 @@ export default {
     const isConnecting = ref(false)
     const walletAddress = ref('')
     const balance = ref(0)
+    const userInfo = ref(null)
+    const isCreatingUser = ref(false)
 
     // Methods
+    const generateRandomUsername = (walletAddress) => {
+      // Генерируем username на основе адреса кошелька
+      const shortAddress = walletAddress.slice(0, 6) + walletAddress.slice(-4)
+      const randomSuffix = Math.floor(Math.random() * 9999).toString().padStart(4, '0')
+      return `user_${shortAddress}_${randomSuffix}`
+    }
+
+    const createUserInDatabase = async (walletAddress) => {
+      isCreatingUser.value = true
+      try {
+        console.log('👤 Создание пользователя в базе данных:', walletAddress)
+        
+        const userData = {
+          wallet_address: walletAddress,
+          username: generateRandomUsername(walletAddress),
+          avatar_url: null // Можно добавить генерацию аватара
+        }
+
+        const response = await fetch('http://localhost:3000/api/user', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(userData)
+        })
+
+        const result = await response.json()
+
+        if (result.success) {
+          console.log('✅ Пользователь создан/найден в базе данных:', result.data.user)
+          userInfo.value = result.data.user
+          return result.data.user
+        } else if (result.error === 'USER_ALREADY_EXISTS') {
+          console.log('ℹ️ Пользователь уже существует в базе данных:', result.data.existingUser)
+          userInfo.value = result.data.existingUser
+          return result.data.existingUser
+        } else {
+          console.error('❌ Ошибка создания пользователя:', result.message)
+          throw new Error(result.message)
+        }
+      } catch (error) {
+        console.error('❌ Ошибка при работе с базе данных пользователей:', error)
+        // Не прерываем подключение кошелька из-за ошибки БД
+        return null
+      } finally {
+        isCreatingUser.value = false
+      }
+    }
+
     const connectWallet = async () => {
       if (!window.solana || !window.solana.isPhantom) {
         alert('Phantom wallet not found! Please install Phantom wallet extension.')
@@ -54,8 +108,12 @@ export default {
       try {
         isConnecting.value = true
         const response = await window.solana.connect()
-        walletAddress.value = response.publicKey.toString()
+        const address = response.publicKey.toString()
+        walletAddress.value = address
         isConnected.value = true
+        
+        // Создаем пользователя в базе данных
+        await createUserInDatabase(address)
         
         // Get balance
         await getBalance()
@@ -72,6 +130,7 @@ export default {
         isConnected.value = false
         walletAddress.value = ''
         balance.value = 0
+        userInfo.value = null
       } catch (error) {
         console.error('Failed to disconnect wallet:', error)
       }
@@ -80,7 +139,7 @@ export default {
     const getBalance = async () => {
       try {
         const { Connection, PublicKey, LAMPORTS_PER_SOL } = await import('@solana/web3.js')
-        const connection = new Connection('https://api.mainnet-beta.solana.com')
+        const connection = new Connection('https://api.devnet.solana.com')
         const publicKey = new PublicKey(walletAddress.value)
         const balanceInLamports = await connection.getBalance(publicKey)
         balance.value = (balanceInLamports / LAMPORTS_PER_SOL).toFixed(4)
@@ -100,8 +159,13 @@ export default {
         try {
           const response = await window.solana.connect({ onlyIfTrusted: true })
           if (response.publicKey) {
-            walletAddress.value = response.publicKey.toString()
+            const address = response.publicKey.toString()
+            walletAddress.value = address
             isConnected.value = true
+            
+            // Создаем пользователя в базе данных при автоматическом подключении
+            //await createUserInDatabase(address)
+            
             await getBalance()
           }
         } catch (error) {
@@ -115,6 +179,8 @@ export default {
       isConnecting,
       walletAddress,
       balance,
+      userInfo,
+      isCreatingUser,
       connectWallet,
       disconnectWallet,
       shortenAddress
@@ -204,6 +270,12 @@ export default {
   font-weight: 600;
   color: #ffffff;
   font-family: 'Monaco', 'Menlo', monospace;
+}
+
+.wallet-username {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 500;
 }
 
 .wallet-balance {

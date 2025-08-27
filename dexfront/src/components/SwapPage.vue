@@ -117,7 +117,7 @@
         </button>
 
         <!-- Init Pool Button -->
-        <button class="init-pool-btn" @click="initPool" :disabled="isInitializingPool">
+        <!--<button class="init-pool-btn" @click="initPool" :disabled="isInitializingPool">
           <span v-if="isInitializingPool">
             <svg class="loading-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 12a9 9 0 11-6.219-8.56"/>
@@ -127,7 +127,7 @@
           <span v-else>
             Initialize Pool
           </span>
-        </button>
+        </button>-->
 
         <!-- Swap Details (when tokens are selected) -->
         <div v-if="showSwapDetails" class="swap-details">
@@ -477,7 +477,7 @@ const executeSwap = async () => {
 
     console.log('Sending swap request:', swapRequest)
 
-    const response = await fetch('http://localhost:3000/api/swap', {
+    const response = await fetch('https://launchpad-wl8n.onrender.com/api/swap', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

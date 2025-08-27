@@ -248,6 +248,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 
 // Form data
 const formData = ref({
@@ -265,6 +266,7 @@ const formData = ref({
 const showSocialLinks = ref(false)
 const showBannerUpload = ref(false)
 const isCreating = ref(false)
+const router = useRouter()
 
 // File inputs
 const imageInput = ref(null)
@@ -384,7 +386,7 @@ const createToken = async () => {
     console.log('Creating token with data:', tokenData)
 
     // 4. Отправляем запрос на создание токена
-    const result = await fetch('http://localhost:3000/api/bonding-curve/create-real-token', {
+    const result = await fetch('https://launchpad-wl8n.onrender.com/api/bonding-curve/create-real-token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -401,28 +403,13 @@ const createToken = async () => {
     
     if (data.success) {
       console.log('🎉 Token created successfully!')
-      console.log('Mint address:', data.mint_address)
-      console.log('Token account:', data.token_account)
-      console.log('Transaction:', data.transaction_signature)
+      console.log('Token ID:', data.data.tokenId)
+      console.log('Bonding curve address:', data.data.bondingCurveAddress)
+      console.log('Transaction:', data.data.transactionSignature)
       
-      // Показываем результат пользователю
-      
-      
-
-      // Reset form after successful creation
-      formData.value = {
-        coinName: '',
-        ticker: '',
-        description: '',
-        website: '',
-        twitter: '',
-        telegram: '',
-        image: null,
-        banner: null
-      }
-      
-      showSocialLinks.value = false
-      showBannerUpload.value = false
+     
+      // Перенаправляем на страницу токена с правильным mint_address
+      router.push(`/coin/${data.data.tokenId}`)
       
     } else {
       throw new Error(data.message || 'Ошибка создания токена')

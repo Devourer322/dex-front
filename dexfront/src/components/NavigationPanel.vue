@@ -46,7 +46,7 @@
 </template>
 
 <script>
-import { ref, inject } from 'vue'
+import { ref, inject, computed, onMounted } from 'vue'
 
 export default {
   name: 'NavigationPanel',
@@ -54,14 +54,45 @@ export default {
     // Inject mobile menu state
     const isMobileMenuOpen = inject('isMobileMenuOpen', ref(false))
     
-    // Navigation items with paths
-    const navigationItems = ref([
-      { id: 'dashboard', label: 'Dashboard', icon: 'DashboardIcon', path: '/dashboard' },
-      { id: 'portfolio', label: 'Profile', icon: 'PortfolioIcon', path: '/portfolio' },
-      { id: 'trading', label: 'Swap', icon: 'TradingIcon', path: '/trading' },
-      { id: 'staking', label: 'Trademark Guidelines', icon: 'StakingIcon', path: '/staking' },
-      { id: 'settings', label: 'Settings', icon: 'SettingsIcon', path: '/settings' }
-    ])
+    // Wallet connection state
+    const walletAddress = ref(null)
+    
+    // Get wallet address from Phantom
+    const getWalletAddress = () => {
+      if (window.solana && window.solana.isConnected && window.solana.publicKey) {
+        return window.solana.publicKey.toString()
+      }
+      return null
+    }
+    
+    // Update wallet address
+    const updateWalletAddress = () => {
+      walletAddress.value = getWalletAddress()
+    }
+    
+    // Navigation items with dynamic paths
+    const navigationItems = computed(() => {
+      const profilePath = walletAddress.value ? `/profile/${walletAddress.value}` : '/profile'
+      
+      return [
+        { id: 'dashboard', label: 'Dashboard', icon: 'DashboardIcon', path: '/dashboard' },
+        { id: 'portfolio', label: 'Profile', icon: 'PortfolioIcon', path: profilePath },
+        { id: 'trading', label: 'Swap', icon: 'TradingIcon', path: '/trading' },
+        { id: 'staking', label: 'Trademark Guidelines', icon: 'StakingIcon', path: '/staking' },
+        { id: 'settings', label: 'Settings', icon: 'SettingsIcon', path: '/settings' }
+      ]
+    })
+
+    // Listen for wallet connection changes
+    onMounted(() => {
+      updateWalletAddress()
+      
+      // Listen for wallet connection events
+      if (window.solana) {
+        window.solana.on('connect', updateWalletAddress)
+        window.solana.on('disconnect', updateWalletAddress)
+      }
+    })
 
     return {
       navigationItems,
