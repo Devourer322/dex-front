@@ -2,9 +2,8 @@
   <div class="token-search">
     <div class="search-container">
       <div class="search-input-wrapper">
-        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="8"/>
-          <path d="m21 21-4.35-4.35"/>
+        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M21 21L16.514 16.506L21 21ZM19 10.5C19 15.194 15.194 19 10.5 19C5.806 19 2 15.194 2 10.5C2 5.806 5.806 2 10.5 2C15.194 2 19 5.806 19 10.5Z" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
         <input 
           v-model="searchQuery"
@@ -121,6 +120,8 @@ const selectToken = (token) => {
 .search-input-wrapper {
   position: relative;
   flex: 1;
+  display: flex;
+  align-items: center;
 }
 
 .search-icon {
@@ -128,8 +129,12 @@ const selectToken = (token) => {
   left: 16px;
   top: 50%;
   transform: translateY(-50%);
-  color: #6b7280;
   pointer-events: none;
+  color: #6b7280;
+  z-index: 1;
+  display: block;
+  width: 20px;
+  height: 20px;
 }
 
 .search-input {

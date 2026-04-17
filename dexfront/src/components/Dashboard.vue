@@ -66,7 +66,7 @@ const loadTokens = async () => {
     isLoading.value = true
     error.value = null
 
-    const response = await fetch('https://launchpad-wl8n.onrender.com/api/token/all')
+    const response = await fetch('http://localhost:3000/api/token/all')
     
     if (!response.ok) {
       throw new Error(`Failed to load tokens: ${response.status}`)
@@ -84,7 +84,7 @@ const loadTokens = async () => {
         description: token.description,
         image: token.image_url && token.image_url !== 'placeholder' 
           ? token.image_url 
-          : 'https://images.pexels.com/photos/730547/pexels-photo-730547.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
+          : 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/sol.svg',
         marketCap: generateMarketCap(),
         replies: Math.floor(Math.random() * 500),
         creator: token.user_pubkey ? token.user_pubkey.slice(0, 6) : 'Unknown',

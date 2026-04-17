@@ -556,7 +556,7 @@
                 class="trade-row"
               >
                 <div class="trade-cell account">
-                  <div class="account-info">
+                  <div class="account-info" @click="navigateToProfile(trade.user_wallet)" style="cursor: pointer;">
                     <div class="account-avatar">
                       <img :src="getAvatarForAddress(trade.user_wallet)" :alt="trade.user_wallet" />
                     </div>
@@ -658,8 +658,19 @@
               :class="{ 'updated': holder.isNewlyUpdated }"
             >
               <span class="holder-rank">{{ holder.rank }}.</span>
-              <span class="holder-type" :class="{ 'bonding-curve': holder.is_bonding_curve }">
-                {{ holder.is_bonding_curve ? 'bonding curve' : formatAddress(holder.holder_address) }}
+              <span 
+                v-if="!holder.is_bonding_curve"
+                class="holder-type clickable-address" 
+                @click="navigateToProfile(holder.holder_address)"
+                style="cursor: pointer;"
+              >
+                {{ formatAddress(holder.holder_address) }}
+              </span>
+              <span 
+                v-else
+                class="holder-type bonding-curve"
+              >
+                bonding curve
               </span>
               <span class="holder-percentage">{{ holder.percentage }}%</span>
             </div>
@@ -672,7 +683,20 @@
               class="holder-item"
             >
               <span class="holder-rank">{{ index + 1 }}.</span>
-              <span class="holder-type">{{ holder.type }}</span>
+              <span 
+                v-if="holder.type && holder.type !== 'bonding curve'"
+                class="holder-type clickable-address"
+                @click="navigateToProfile(holder.type)"
+                style="cursor: pointer;"
+              >
+                {{ holder.type }}
+              </span>
+              <span 
+                v-else
+                class="holder-type"
+              >
+                {{ holder.type }}
+              </span>
               <span class="holder-percentage">{{ holder.percentage }}%</span>
             </div>
           </div>
@@ -691,6 +715,9 @@ import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
 const route = useRoute()
+
+// Inject global SOL balance state
+const solBalance = inject('solBalance', ref('0.0000'))
 
 // Token loading state
 const isTokenLoading = ref(true)
@@ -839,6 +866,9 @@ const addTradeMarkers = () => {
     }
   }
 
+  // Sort markers by time in ascending order (required by Lightweight-charts)
+  markers.sort((a, b) => a.time - b.time)
+
   candlestickSeries.value.setMarkers(markers)
   console.log(`✅ Added ${markers.length} trade markers`)
 }
@@ -847,7 +877,7 @@ const addTradeMarkers = () => {
 const tokenInfo = ref({
   name: 'insider stock',
   ticker: 'insider',
-  image: 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&dpr=1',
+  image: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/sol.svg',
   description: 'insider stock is a revolutionary meme token that brings transparency to the crypto market. Built on Solana blockchain, it aims to democratize access to insider trading information through community-driven insights and real-time market analysis. Join the movement of informed traders who believe in fair and transparent markets.',
   website: 'https://insiderstock.com',
   twitter: 'https://twitter.com/insiderstock',
@@ -982,11 +1012,11 @@ const generateTradesData = () => {
   const trades = []
   const accounts = ['zWxte', 'zhb47', 'sNT3Um', 'shu1pu', 'JDEMG']
   const avatars = [
-    'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=40&h=40&dpr=1',
-    'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=40&h=40&dpr=1',
-    'https://images.pexels.com/photos/33535/monkey-ape-thinking-mimic.jpg?auto=compress&cs=tinysrgb&w=40&h=40&dpr=1',
-    'https://images.pexels.com/photos/730547/pexels-photo-730547.jpeg?auto=compress&cs=tinysrgb&w=40&h=40&dpr=1',
-    'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?auto=compress&cs=tinysrgb&w=40&h=40&dpr=1'
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=anonymous1&backgroundColor=6366f1,8b5cf6,ec4899,f59e0b,10b981',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=anonymous2&backgroundColor=6366f1,8b5cf6,ec4899,f59e0b,10b981',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=anonymous3&backgroundColor=6366f1,8b5cf6,ec4899,f59e0b,10b981',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=anonymous4&backgroundColor=6366f1,8b5cf6,ec4899,f59e0b,10b981',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=anonymous5&backgroundColor=6366f1,8b5cf6,ec4899,f59e0b,10b981'
   ]
   
   for (let i = 0; i < 50; i++) {
@@ -1299,11 +1329,15 @@ const initializeChart = () => {
     fontSize: 10,
   })
 
+  // Sort data by time in ascending order (required by Lightweight-charts)
+  const sortedCandleData = [...chartCandleData.value].sort((a, b) => a.time - b.time)
+  const sortedVolumeData = [...chartVolumeData.value].sort((a, b) => a.time - b.time)
+
   // Set the data
-  console.log('📊 Setting chart data - Candle sample:', chartCandleData.value?.slice(0, 3))
-  console.log('📊 Setting chart data - Volume sample:', chartVolumeData.value?.slice(0, 3))
-  candlestickSeries.value.setData(chartCandleData.value)
-  volumeSeries.value.setData(chartVolumeData.value)
+  console.log('📊 Setting chart data - Candle sample:', sortedCandleData?.slice(0, 3))
+  console.log('📊 Setting chart data - Volume sample:', sortedVolumeData?.slice(0, 3))
+  candlestickSeries.value.setData(sortedCandleData)
+  volumeSeries.value.setData(sortedVolumeData)
 
   // Configure time scale to make bars closer together
   chart.value.timeScale().applyOptions({
@@ -1440,7 +1474,7 @@ const connectWebSocket = (mintAddress) => {
     console.log('🔌 Connecting to WebSocket for token:', mintAddress)
     
     // Connect to WebSocket server
-    websocket.value = new WebSocket(`wss://launchpad-wl8n.onrender.com/websocket`)
+    websocket.value = new WebSocket(`ws://localhost:3000/websocket`)
     
     websocket.value.onopen = () => {
       console.log('✅ WebSocket connected successfully')
@@ -1576,8 +1610,13 @@ const refreshChartData = async (mintAddress) => {
     } else {
       // Chart exists, update the data
       console.log('📈 Updating existing chart with new data...')
-      candlestickSeries.value.setData(chartCandleData.value)
-      volumeSeries.value.setData(chartVolumeData.value)
+      
+      // Sort data by time in ascending order (required by Lightweight-charts)
+      const sortedCandleData = [...chartCandleData.value].sort((a, b) => a.time - b.time)
+      const sortedVolumeData = [...chartVolumeData.value].sort((a, b) => a.time - b.time)
+      
+      candlestickSeries.value.setData(sortedCandleData)
+      volumeSeries.value.setData(sortedVolumeData)
       
       // Add trade markers if enabled
       if (showTradeDisplay.value) {
@@ -1641,6 +1680,13 @@ const goBack = () => {
   router.back()
 }
 
+// Navigate to user profile
+const navigateToProfile = (walletAddress) => {
+  if (walletAddress) {
+    router.push(`/profile/${walletAddress}`)
+  }
+}
+
 const setTimeframe = (timeframe) => {
   selectedTimeframe.value = timeframe
   console.log(`🔄 Switching to ${timeframe} timeframe`)
@@ -1660,8 +1706,12 @@ const setTimeframe = (timeframe) => {
       
       // Update chart series if they exist
       if (candlestickSeries.value && volumeSeries.value) {
-        candlestickSeries.value.setData(chartData.candleData)
-        volumeSeries.value.setData(chartData.volumeData)
+        // Sort data by time in ascending order (required by Lightweight-charts)
+        const sortedCandleData = [...chartData.candleData].sort((a, b) => a.time - b.time)
+        const sortedVolumeData = [...chartData.volumeData].sort((a, b) => a.time - b.time)
+        
+        candlestickSeries.value.setData(sortedCandleData)
+        volumeSeries.value.setData(sortedVolumeData)
         
         // Re-add trade markers if enabled
         if (showTradeDisplay.value) {
@@ -1764,8 +1814,12 @@ const toggleNoData = () => {
     chartVolumeData.value = volumeData
     
     if (candlestickSeries.value && volumeSeries.value) {
-      candlestickSeries.value.setData(candleData)
-      volumeSeries.value.setData(volumeData)
+      // Sort data by time in ascending order (required by Lightweight-charts)
+      const sortedCandleData = [...candleData].sort((a, b) => a.time - b.time)
+      const sortedVolumeData = [...volumeData].sort((a, b) => a.time - b.time)
+      
+      candlestickSeries.value.setData(sortedCandleData)
+      volumeSeries.value.setData(sortedVolumeData)
     }
   }
 }
@@ -1807,9 +1861,9 @@ const getCurrencySymbol = () => {
 // Get balance display
 const getBalanceDisplay = () => {
   if (activeTradeTab.value === 'buy') {
-    return tradeCurrency.value === 'SOL' ? '0.0459 SOL' : '0 TOKENS'
+    return tradeCurrency.value === 'SOL' ? `${solBalance.value} SOL` : '0 TOKENS'
   } else {
-    return tradeCurrency.value === 'SOL' ? '0.0459 SOL' : '0 TOKENS'
+    return tradeCurrency.value === 'SOL' ? `${solBalance.value} SOL` : '0 TOKENS'
   }
 }
 
@@ -1866,11 +1920,11 @@ const formatTimeAgo = (timestamp) => {
 const getAvatarForAddress = (address) => {
   // Generate a consistent avatar based on address
   const avatars = [
-    'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=40&h=40&dpr=1',
-    'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=40&h=40&dpr=1',
-    'https://images.pexels.com/photos/33535/monkey-ape-thinking-mimic.jpg?auto=compress&cs=tinysrgb&w=40&h=40&dpr=1',
-    'https://images.pexels.com/photos/730547/pexels-photo-730547.jpeg?auto=compress&cs=tinysrgb&w=40&h=40&dpr=1',
-    'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?auto=compress&cs=tinysrgb&w=40&h=40&dpr=1'
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=anonymous1&backgroundColor=6366f1,8b5cf6,ec4899,f59e0b,10b981',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=anonymous2&backgroundColor=6366f1,8b5cf6,ec4899,f59e0b,10b981',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=anonymous3&backgroundColor=6366f1,8b5cf6,ec4899,f59e0b,10b981',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=anonymous4&backgroundColor=6366f1,8b5cf6,ec4899,f59e0b,10b981',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=anonymous5&backgroundColor=6366f1,8b5cf6,ec4899,f59e0b,10b981'
   ]
   
   if (!address) return avatars[0]
@@ -1896,7 +1950,7 @@ const loadTokenData = async (mintAddress) => {
     isTokenLoading.value = true
     tokenLoadError.value = null
 
-    const response = await fetch(`https://launchpad-wl8n.onrender.com/api/token/coin/${mintAddress}`)
+    const response = await fetch(`http://localhost:3000/api/token/coin/${mintAddress}`)
     
     if (!response.ok) {
       throw new Error(`Failed to load token data: ${response.status}`)
@@ -2011,7 +2065,7 @@ const loadMarketCapData = async (mintAddress) => {
   try {
     console.log('🔄 Loading market cap data for mint:', mintAddress)
     
-    const response = await fetch(`https://launchpad-wl8n.onrender.com/api/token/price/${mintAddress}`)
+    const response = await fetch(`http://localhost:3000/api/token/price/${mintAddress}`)
     
     if (!response.ok) {
       throw new Error(`Failed to load market cap data: ${response.status}`)
@@ -2054,7 +2108,7 @@ const loadTopHoldersData = async (mintAddress) => {
 
     console.log('🔄 Loading top holders data for mint:', mintAddress)
 
-    const response = await fetch(`https://launchpad-wl8n.onrender.com/api/websocket/holders/top/${mintAddress}`)
+    const response = await fetch(`http://localhost:3000/api/websocket/holders/top/${mintAddress}`)
     
     if (!response.ok) {
       throw new Error(`Failed to load top holders data: ${response.status}`)
@@ -2179,7 +2233,7 @@ const loadTransactionData = async (mintAddress) => {
 
     console.log('🔄 Loading transaction data for mint:', mintAddress)
 
-    const response = await fetch(`https://launchpad-wl8n.onrender.com/api/websocket/database/trades/mint/${mintAddress}?limit=1000`)
+    const response = await fetch(`http://localhost:3000/api/websocket/database/trades/mint/${mintAddress}?limit=1000`)
     
     if (!response.ok) {
       throw new Error(`Failed to load transaction data: ${response.status}`)
@@ -2278,11 +2332,16 @@ const loadTransactionData = async (mintAddress) => {
       // Update chart series if they exist
       if (candlestickSeries.value && volumeSeries.value) {
         console.log('🎯 About to set chart data...')
-        console.log('  Candle data sample:', chartData.candleData.slice(0, 2))
-        console.log('  Volume data sample:', chartData.volumeData.slice(0, 2))
         
-        candlestickSeries.value.setData(chartData.candleData)
-        volumeSeries.value.setData(chartData.volumeData)
+        // Sort data by time in ascending order (required by Lightweight-charts)
+        const sortedCandleData = [...chartData.candleData].sort((a, b) => a.time - b.time)
+        const sortedVolumeData = [...chartData.volumeData].sort((a, b) => a.time - b.time)
+        
+        console.log('  Candle data sample:', sortedCandleData.slice(0, 2))
+        console.log('  Volume data sample:', sortedVolumeData.slice(0, 2))
+        
+        candlestickSeries.value.setData(sortedCandleData)
+        volumeSeries.value.setData(sortedVolumeData)
         
         console.log('✅ Chart data set successfully')
         
@@ -2431,7 +2490,6 @@ const convertTransactionsToChartData = (transactions) => {
 
     // Only create candle if we have real transactions in this interval
     if (transactionsInInterval.length === 0) {
-      console.log(`⏭️ Skipping interval ${new Date(time).toLocaleTimeString()} - no transactions`)
       continue
     }
 
@@ -2586,7 +2644,7 @@ async function buyToken() {
     });
 
     // Send request to buy API endpoint
-    const response = await fetch(`https://launchpad-wl8n.onrender.com/api/token/buy/${mintAddress}`, {
+    const response = await fetch(`http://localhost:3000/api/token/buy/${mintAddress}`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json'
@@ -2614,62 +2672,99 @@ async function buyToken() {
     console.log('Server response:', responseData);
 
     // Extract transaction from response
-    const { transaction, transactionDetails } = responseData.data;
+    const { transaction, transactionDetails, transactionVersion } = responseData.data;
     
     if (!transaction) {
       throw new Error('No transaction received from server');
     }
 
-    // Import Solana web3.js and Buffer
-    const { Transaction, Connection, clusterApiUrl } = await import('@solana/web3.js');
-    const { Buffer } = await import('buffer');
+    // Import Solana web3.js
+    const { Connection, clusterApiUrl } = await import('@solana/web3.js');
+    
+    // Import transaction utilities
+    const { 
+      deserializeTransaction,
+      createTransactionMemo, 
+      simulateTransactionForPreview,
+      formatTransactionDetails,
+      handlePhantomError 
+    } = await import('@/utils/transactionUtils.js');
     
     // Create connection
     const connection = new Connection(clusterApiUrl('devnet'));
     
-    // 1. Десериализовать транзакцию
-    const tx = Transaction.from(Buffer.from(transaction, 'base64'));
+    // 1. Десериализовать транзакцию (Legacy или Versioned)
+    const tx = deserializeTransaction(transaction, transactionVersion);
 
-    console.log('Transaction details:', {
-      amount: transactionDetails.amount,
-      solAmount: transactionDetails.solAmount,
-      currentPrice: transactionDetails.currentPrice,
-      expectedPrice: transactionDetails.expectedPrice,
-      slippage: transactionDetails.slippage,
-      minTokensToReceive: transactionDetails.minTokensToReceive
-    });
+    // 2. Показываем детали транзакции пользователю ДО открытия Phantom
+    const preview = formatTransactionDetails(transactionDetails, 'buy', tokenInfo.value);
+    console.log('📋 Transaction Preview (will be shown in Phantom):', preview);
+    console.log('   You pay:', preview.youPay);
+    console.log('   You receive:', preview.youReceive);
+    console.log('   Minimum:', preview.minimum);
+    console.log('   Price impact:', preview.priceImpact);
+    console.log('   Slippage:', preview.slippage);
 
     // Transaction is already prepared by backend (feePayer and blockhash set)
     console.log('🔧 Transaction prepared by backend:', {
-      feePayer: tx.feePayer?.toString(),
-      recentBlockhash: tx.recentBlockhash
+      version: tx.version,
+      signatures: tx.signatures?.length
     });
 
-    // ИСПРАВЛЕНИЕ: Установить правильные isSigner флаги для BUY операций
-    console.log('🔧 Fixing isSigner flags for BUY operation...');
-    const instruction = tx.instructions[0];
-    if (instruction.keys.length >= 3) {
-      // fee_receiver (индекс 2) не должен быть подписантом для BUY операций
-      instruction.keys[2].isSigner = false;
-      console.log('✅ Fixed fee_receiver isSigner flag:', instruction.keys[2].isSigner);
+    // NOTE: Backend already adds Memo instruction to the transaction
+    // We don't need to add it again on frontend to avoid duplication
+    console.log('ℹ️ Memo instruction already added by backend');
+
+    // 3. Get fresh blockhash before sending transaction (только для Legacy)
+    if (transactionVersion === undefined || transactionVersion === null) {
+      console.log('🔄 Getting fresh blockhash...');
+      const latestBlockhash = await connection.getLatestBlockhash('finalized');
+      tx.recentBlockhash = latestBlockhash.blockhash;
+      tx.lastValidBlockHeight = latestBlockhash.lastValidBlockHeight;
+      console.log('✅ Fresh blockhash set:', latestBlockhash.blockhash);
+    } else {
+      console.log('ℹ️ Versioned Transaction - blockhash already set by backend');
     }
 
-    // Get fresh blockhash before sending transaction
-    console.log('🔄 Getting fresh blockhash...');
-    const latestBlockhash = await connection.getLatestBlockhash();
-    tx.recentBlockhash = latestBlockhash.blockhash;
-    console.log('✅ Fresh blockhash set:', latestBlockhash.blockhash);
+    // 5. Симулируем транзакцию для проверки (опционально)
+    try {
+      const simulation = await simulateTransactionForPreview(tx, connection);
+      if (simulation) {
+        console.log('✅ Transaction simulation successful');
+        console.log('   Units consumed:', simulation.unitsConsumed);
+      }
+    } catch (simError) {
+      console.warn('⚠️ Simulation error (non-blocking):', simError.message);
+    }
 
-    // Sign transaction with Phantom
-    const signedTx = await window.solana.signTransaction(tx);
+    // 6. Показываем детали транзакции пользователю перед подписью
+    const expectedTokens = Math.floor(transactionDetails.expectedTokensToReceive || transactionDetails.minTokensToReceive).toLocaleString();
+    const minTokens = Math.floor(transactionDetails.minTokensToReceive || 0).toLocaleString();
+    const solAmountFormatted = transactionDetails.solAmount.toFixed(4);
+    const tokenSymbol = tokenInfo.value.ticker || 'TOKENS';
     
-    // Send transaction
-    const signature = await connection.sendRawTransaction(signedTx.serialize());
+    console.log(`📋 BUY Transaction Details:`);
+    console.log(`   Pay: ${solAmountFormatted} SOL`);
+    console.log(`   Receive: ~${expectedTokens} ${tokenSymbol}`);
+    console.log(`   Minimum: ${minTokens} ${tokenSymbol} (with ${transactionDetails.slippage}% slippage)`);
+    console.log(`   Memo instruction will show details in Phantom`);
+
+    // 7. Send transaction via Phantom with skipPreflight
+    // skipPreflight: true bypasses Phantom's internal simulation
+    // This is safe because backend already simulated the transaction successfully
+    console.log('📤 Sending transaction via Phantom (skipPreflight: true)');
     
-    console.log('Transaction sent:', signature);
+    const signature = await window.solana.signAndSendTransaction(tx, {
+      skipPreflight: true, // Пропускаем симуляцию Phantom (бэкенд уже симулировал)
+      maxRetries: 3
+    });
     
-    // Confirm transaction
-    await connection.confirmTransaction(signature);
+    console.log('✅ Transaction sent:', signature.signature);
+    console.log(`🔗 View on Solscan: https://solscan.io/tx/${signature.signature}?cluster=devnet`);
+    
+    // 8. Confirm transaction
+    console.log('⏳ Waiting for confirmation...');
+    await connection.confirmTransaction(signature.signature, 'confirmed');
     
     
     // Clear the input
@@ -2688,20 +2783,27 @@ async function buyToken() {
   } catch (error) {
     console.error('Error buying tokens:', error);
     
-    // More detailed error messages
-    let errorMessage = 'Unknown error occurred';
-    
-    if (error.message.includes('User rejected')) {
-      errorMessage = 'Transaction was cancelled by user';
-    } else if (error.message.includes('insufficient funds')) {
-      errorMessage = 'Insufficient SOL balance';
-    } else if (error.message.includes('slippage')) {
-      errorMessage = 'Price moved too much (slippage exceeded)';
-    } else {
-      errorMessage = error.message;
+    // Use improved error handling from utilities
+    try {
+      const { handlePhantomError } = await import('@/utils/transactionUtils.js');
+      const errorMessage = handlePhantomError(error);
+      alert('❌ Ошибка покупки токенов:\n\n' + errorMessage);
+    } catch (importError) {
+      // Fallback to basic error handling
+      let errorMessage = 'Unknown error occurred';
+      
+      if (error.message.includes('User rejected')) {
+        errorMessage = 'Транзакция была отклонена пользователем';
+      } else if (error.message.includes('insufficient funds')) {
+        errorMessage = 'Недостаточно SOL для оплаты комиссии';
+      } else if (error.message.includes('slippage')) {
+        errorMessage = 'Цена изменилась слишком сильно (превышен slippage)';
+      } else {
+        errorMessage = error.message;
+      }
+      
+      alert('❌ Ошибка покупки токенов:\n\n' + errorMessage);
     }
-    
-    alert('❌ Error buying tokens: ' + errorMessage);
   } finally {
     // Reset loading state
     isTransactionPending.value = false
@@ -2758,7 +2860,7 @@ async function sellToken() {
     });
 
     // Send request to sell API endpoint
-    const response = await fetch(`https://launchpad-wl8n.onrender.com/api/token/sell/${mintAddress}`, {
+    const response = await fetch(`http://localhost:3000/api/token/sell/${mintAddress}`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json'
@@ -2786,54 +2888,99 @@ async function sellToken() {
     console.log('Server response:', responseData);
 
     // Extract transaction from response
-    const { transaction, transactionDetails } = responseData.data;
+    const { transaction, transactionDetails, transactionVersion } = responseData.data;
     
     if (!transaction) {
       throw new Error('No transaction received from server');
     }
 
-    // Import Solana web3.js and Buffer
-    const { Transaction, Connection, clusterApiUrl } = await import('@solana/web3.js');
-    const { Buffer } = await import('buffer');
+    // Import Solana web3.js
+    const { Connection, clusterApiUrl } = await import('@solana/web3.js');
+    
+    // Import transaction utilities
+    const { 
+      deserializeTransaction,
+      createTransactionMemo, 
+      simulateTransactionForPreview,
+      formatTransactionDetails,
+      handlePhantomError 
+    } = await import('@/utils/transactionUtils.js');
     
     // Create connection
     const connection = new Connection(clusterApiUrl('devnet'));
     
-    // 1. Десериализовать транзакцию
-    const tx = Transaction.from(Buffer.from(transaction, 'base64'));
+    // 1. Десериализовать транзакцию (Legacy или Versioned)
+    const tx = deserializeTransaction(transaction, transactionVersion);
 
-    console.log('Transaction details:', {
-      amount: transactionDetails.amount,
-      solAmount: transactionDetails.solAmount,
-      currentPrice: transactionDetails.currentPrice,
-      expectedPrice: transactionDetails.expectedPrice,
-      slippage: transactionDetails.slippage,
-      minSolToReceive: transactionDetails.minSolToReceive,
-      pricePerTokenSOL: pricePerTokenSOL
-    });
+    // 2. Показываем детали транзакции пользователю ДО открытия Phantom
+    const preview = formatTransactionDetails(transactionDetails, 'sell', tokenInfo.value);
+    console.log('📋 Transaction Preview (will be shown in Phantom):', preview);
+    console.log('   You pay:', preview.youPay);
+    console.log('   You receive:', preview.youReceive);
+    console.log('   Minimum:', preview.minimum);
+    console.log('   Price impact:', preview.priceImpact);
+    console.log('   Slippage:', preview.slippage);
 
     // Transaction is already prepared by backend (feePayer and blockhash set)
     console.log('🔧 Transaction prepared by backend:', {
-      feePayer: tx.feePayer?.toString(),
-      recentBlockhash: tx.recentBlockhash
+      version: tx.version,
+      signatures: tx.signatures?.length
     });
 
-    // Get fresh blockhash before sending transaction
-    console.log('🔄 Getting fresh blockhash...');
-    const latestBlockhash = await connection.getLatestBlockhash();
-    tx.recentBlockhash = latestBlockhash.blockhash;
-    console.log('✅ Fresh blockhash set:', latestBlockhash.blockhash);
+    // NOTE: Backend already adds Memo instruction to the transaction
+    // We don't need to add it again on frontend to avoid duplication
+    console.log('ℹ️ Memo instruction already added by backend');
 
-    // Sign transaction with Phantom
-    const signedTx = await window.solana.signTransaction(tx);
+    // 3. Get fresh blockhash before sending transaction (только для Legacy)
+    if (transactionVersion === undefined || transactionVersion === null) {
+      console.log('🔄 Getting fresh blockhash...');
+      const latestBlockhash = await connection.getLatestBlockhash('finalized');
+      tx.recentBlockhash = latestBlockhash.blockhash;
+      tx.lastValidBlockHeight = latestBlockhash.lastValidBlockHeight;
+      console.log('✅ Fresh blockhash set:', latestBlockhash.blockhash);
+    } else {
+      console.log('ℹ️ Versioned Transaction - blockhash already set by backend');
+    }
+
+    // 5. Симулируем транзакцию для проверки (опционально)
+    try {
+      const simulation = await simulateTransactionForPreview(tx, connection);
+      if (simulation) {
+        console.log('✅ Transaction simulation successful');
+        console.log('   Units consumed:', simulation.unitsConsumed);
+      }
+    } catch (simError) {
+      console.warn('⚠️ Simulation error (non-blocking):', simError.message);
+    }
+
+    // 6. Показываем детали транзакции пользователю перед подписью
+    const tokensToSell = Math.floor(transactionDetails.amount).toLocaleString();
+    const minSol = transactionDetails.minSolToReceive.toFixed(4);
+    const expectedSol = (transactionDetails.expectedSolToReceive || minSol).toFixed(4);
+    const tokenSymbol = tokenInfo.value.ticker || 'TOKENS';
     
-    // Send transaction
-    const signature = await connection.sendRawTransaction(signedTx.serialize());
+    console.log(`📋 SELL Transaction Details:`);
+    console.log(`   Pay: ${tokensToSell} ${tokenSymbol}`);
+    console.log(`   Receive: ~${expectedSol} SOL`);
+    console.log(`   Minimum: ${minSol} SOL (with ${transactionDetails.slippage}% slippage)`);
+    console.log(`   Memo instruction will show details in Phantom`);
+
+    // 7. Send transaction via Phantom with skipPreflight
+    // skipPreflight: true bypasses Phantom's internal simulation
+    // This is safe because backend already simulated the transaction successfully
+    console.log('📤 Sending transaction via Phantom (skipPreflight: true)');
     
-    console.log('Transaction sent:', signature);
+    const signature = await window.solana.signAndSendTransaction(tx, {
+      skipPreflight: true, // Пропускаем симуляцию Phantom (бэкенд уже симулировал)
+      maxRetries: 3
+    });
     
-    // Confirm transaction
-    await connection.confirmTransaction(signature);
+    console.log('✅ Transaction sent:', signature.signature);
+    console.log(`🔗 View on Solscan: https://solscan.io/tx/${signature.signature}?cluster=devnet`);
+    
+    // 8. Confirm transaction
+    console.log('⏳ Waiting for confirmation...');
+    await connection.confirmTransaction(signature.signature, 'confirmed');
     
     
     // Clear the input
@@ -2852,20 +2999,27 @@ async function sellToken() {
   } catch (error) {
     console.error('Error selling tokens:', error);
     
-    // More detailed error messages
-    let errorMessage = 'Unknown error occurred';
-    
-    if (error.message.includes('User rejected')) {
-      errorMessage = 'Transaction was cancelled by user';
-    } else if (error.message.includes('insufficient funds')) {
-      errorMessage = 'Insufficient token balance';
-    } else if (error.message.includes('slippage')) {
-      errorMessage = 'Price moved too much (slippage exceeded)';
-    } else {
-      errorMessage = error.message;
+    // Use improved error handling from utilities
+    try {
+      const { handlePhantomError } = await import('@/utils/transactionUtils.js');
+      const errorMessage = handlePhantomError(error);
+      alert('❌ Ошибка продажи токенов:\n\n' + errorMessage);
+    } catch (importError) {
+      // Fallback to basic error handling
+      let errorMessage = 'Unknown error occurred';
+      
+      if (error.message.includes('User rejected')) {
+        errorMessage = 'Транзакция была отклонена пользователем';
+      } else if (error.message.includes('insufficient funds')) {
+        errorMessage = 'Недостаточно токенов для продажи';
+      } else if (error.message.includes('slippage')) {
+        errorMessage = 'Цена изменилась слишком сильно (превышен slippage)';
+      } else {
+        errorMessage = error.message;
+      }
+      
+      alert('❌ Ошибка продажи токенов:\n\n' + errorMessage);
     }
-    
-    alert('❌ Error selling tokens: ' + errorMessage);
   } finally {
     // Reset loading state
     isTransactionPending.value = false
@@ -5095,5 +5249,21 @@ input:checked + .toggle-slider:before {
   .stat-value {
     font-size: 14px;
   }
+}
+
+/* Clickable address styles */
+.clickable-address {
+  color: #42b883;
+  transition: color 0.2s ease;
+}
+
+.clickable-address:hover {
+  color: #369870;
+  text-decoration: underline;
+}
+
+.account-info:hover {
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
 }
 </style>

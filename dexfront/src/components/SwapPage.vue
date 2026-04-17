@@ -131,21 +131,42 @@
 
         <!-- Swap Details (when tokens are selected) -->
         <div v-if="showSwapDetails" class="swap-details">
-          <div class="detail-row">
+          <!-- Loading state for quote -->
+          <div v-if="isGettingQuote" class="detail-row">
+            <span class="detail-label">Getting quote...</span>
+            <div class="loading-spinner"></div>
+          </div>
+          
+          <!-- Quote details -->
+          <div v-else-if="currentQuote" class="quote-details">
+            <div class="detail-row">
+              <span class="detail-label">Rate</span>
+              <span class="detail-value">1 {{ selectedSellToken.symbol }} = {{ exchangeRate }} {{ selectedBuyToken?.symbol }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Price Impact</span>
+              <span class="detail-value" :class="getPriceImpactClass()">
+                {{ getPriceImpactText() }}
+              </span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Minimum received</span>
+              <span class="detail-value">{{ minimumReceived }} {{ selectedBuyToken?.symbol }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Network fee</span>
+              <span class="detail-value">{{ getNetworkFeeText() }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Provider</span>
+              <span class="detail-value">Raydium</span>
+            </div>
+          </div>
+          
+          <!-- Fallback when no quote -->
+          <div v-else class="detail-row">
             <span class="detail-label">Rate</span>
             <span class="detail-value">1 {{ selectedSellToken.symbol }} = {{ exchangeRate }} {{ selectedBuyToken?.symbol }}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Price Impact</span>
-            <span class="detail-value">< 0.1%</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Minimum received</span>
-            <span class="detail-value">{{ minimumReceived }} {{ selectedBuyToken?.symbol }}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Network fee</span>
-            <span class="detail-value">~0.00025 SOL</span>
           </div>
         </div>
       </div>
@@ -311,9 +332,12 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, inject } from 'vue'
-import { Transaction, VersionedTransaction, Connection } from '@solana/web3.js'
+import { ref, computed, watch, inject, onMounted } from 'vue'
+import { Transaction, VersionedTransaction, Connection, PublicKey } from '@solana/web3.js'
 import { Buffer } from 'buffer';
+
+// Inject global SOL balance state
+const solBalance = inject('solBalance', ref('0.0000'))
 
 // Form state
 const sellAmount = ref('')
@@ -323,7 +347,7 @@ const selectedSellToken = ref({
   name: 'Solana',
   address: 'So11111111111111111111111111111111111111112',
   image: null,
-  balance: '0.0459'
+  balance: solBalance.value
 })
 const selectedBuyToken = ref(null)
 
@@ -361,44 +385,109 @@ const availableTokens = ref([
     name: 'Solana',
     address: 'So11111111111111111111111111111111111111112',
     image: null,
-    balance: '0.0459'
+    balance: solBalance.value
   },
   {
     symbol: 'USDC',
     name: 'USD Coin',
     address: 'GYreuLDxgg9xXGuj2UgwPEEQW5P5iDNVqBB7Joy4sYUB',
-    image: 'https://images.pexels.com/photos/730547/pexels-photo-730547.jpeg?auto=compress&cs=tinysrgb&w=40&h=40&dpr=1',
+    image: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdc.svg',
     balance: '0'
   },
   {
     symbol: 'RAY',
     name: 'Raydium',
     address: '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R',
-    image: 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=40&h=40&dpr=1',
+    image: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/ray.svg',
     balance: '0'
   },
   {
     symbol: 'BONK',
     name: 'Bonk',
     address: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
-    image: 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=40&h=40&dpr=1',
+    image: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/bonk.svg',
     balance: '0'
   },
   {
     symbol: 'WIF',
     name: 'dogwifhat',
     address: 'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm',
-    image: 'https://images.pexels.com/photos/33535/monkey-ape-thinking-mimic.jpg?auto=compress&cs=tinysrgb&w=40&h=40&dpr=1',
+    image: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/wif.svg',
     balance: '0'
   },
   {
     symbol: 'JUP',
     name: 'Jupiter',
     address: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN',
-    image: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=40&h=40&dpr=1',
+    image: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/jup.svg',
     balance: '0'
   }
 ])
+
+// Load tokens - Raydium doesn't have a tokens endpoint, so we use common tokens
+const loadRaydiumTokens = async () => {
+  try {
+    console.log('🔍 Loading common tokens for Raydium...')
+    
+    // Common tokens available on Raydium
+    const commonTokens = [
+      {
+        address: 'So11111111111111111111111111111111111111112',
+        symbol: 'SOL',
+        name: 'Solana',
+        decimals: 9,
+        image: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/sol.svg',
+        balance: '0'
+      },
+      {
+        address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        symbol: 'USDT',
+        name: 'Tether USD',
+        decimals: 6,
+        image: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdt.svg',
+        balance: '0'
+      },
+      {
+        address: '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R',
+        symbol: 'RAY',
+        name: 'Raydium',
+        decimals: 6,
+        image: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/ray.svg',
+        balance: '0'
+      },
+      {
+        address: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
+        symbol: 'BONK',
+        name: 'Bonk',
+        decimals: 5,
+        image: 'https://img.icons8.com/color/32/bonk.png',
+        balance: '0'
+      },
+      {
+        address: 'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm',
+        symbol: 'WIF',
+        name: 'dogwifhat',
+        decimals: 6,
+        image: 'https://img.icons8.com/color/32/dog.png',
+        balance: '0'
+      },
+      {
+        address: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN',
+        symbol: 'JUP',
+        name: 'Jupiter',
+        decimals: 6,
+        image: 'https://img.icons8.com/color/32/planet.png',
+        balance: '0'
+      }
+    ]
+    
+    availableTokens.value = commonTokens
+    console.log('✅ Available tokens updated:', commonTokens.length)
+  } catch (error) {
+    console.error('❌ Error loading tokens:', error)
+    // Keep existing tokens
+  }
+}
 
 // Computed properties
 const filteredTokens = computed(() => {
@@ -414,16 +503,62 @@ const showSwapDetails = computed(() => {
   return selectedBuyToken.value && sellAmount.value && parseFloat(sellAmount.value) > 0
 })
 
+// Real-time quote state
+const currentQuote = ref(null)
+const isGettingQuote = ref(false)
+
 const exchangeRate = computed(() => {
-  // Mock exchange rate calculation
-  return selectedBuyToken.value ? '150.25' : '0'
+  if (!currentQuote.value || !sellAmount.value || parseFloat(sellAmount.value) === 0) {
+    return '0'
+  }
+  
+  const inAmount = parseFloat(sellAmount.value)
+  const outAmount = parseFloat(currentQuote.value.data?.outputAmount || 0) / Math.pow(10, selectedBuyToken.value?.decimals || 6)
+  
+  return (outAmount / inAmount).toFixed(6)
 })
 
 const minimumReceived = computed(() => {
-  if (!sellAmount.value || !selectedBuyToken.value) return '0'
-  const amount = parseFloat(sellAmount.value) * parseFloat(exchangeRate.value) * 0.995
-  return amount.toFixed(6)
+  if (!currentQuote.value || !sellAmount.value || parseFloat(sellAmount.value) === 0) {
+    return '0'
+  }
+  
+  const outAmount = parseFloat(currentQuote.value.data?.outputAmount || 0) / Math.pow(10, selectedBuyToken.value?.decimals || 6)
+  // Apply 0.5% slippage tolerance
+  return (outAmount * 0.995).toFixed(6)
 })
+
+// Get real-time quote
+const getQuote = async () => {
+  if (!selectedSellToken.value || !selectedBuyToken.value || !sellAmount.value || parseFloat(sellAmount.value) === 0) {
+    currentQuote.value = null
+    buyAmount.value = ''
+    return
+  }
+
+  isGettingQuote.value = true
+  
+  try {
+    const quote = await getRaydiumQuote(
+      selectedSellToken.value.address,
+      selectedBuyToken.value.address,
+      parseFloat(sellAmount.value)
+    )
+    
+    currentQuote.value = quote
+    
+    if (quote && quote.data && quote.data.outputAmount) {
+      const outAmount = parseFloat(quote.data.outputAmount) / Math.pow(10, selectedBuyToken.value.decimals || 6)
+      buyAmount.value = outAmount.toFixed(6)
+    }
+  } catch (error) {
+    console.error('❌ Error getting quote:', error)
+    currentQuote.value = null
+    buyAmount.value = ''
+  } finally {
+    isGettingQuote.value = false
+  }
+}
 
 const canSwap = computed(() => {
   return selectedBuyToken.value && 
@@ -433,6 +568,28 @@ const canSwap = computed(() => {
          !isSwapping.value
 })
 
+// Raydium API Configuration
+const RAYDIUM_API_BASE = 'https://transaction-v1.raydium.io'
+const RAYDIUM_SWAP_HOST = 'https://transaction-v1.raydium.io'
+
+// Common token addresses for Devnet
+const DEVNET_TOKENS = {
+  SOL: {
+    address: 'So11111111111111111111111111111111111111112',
+    symbol: 'SOL',
+    name: 'Solana',
+    decimals: 9,
+    image: null
+  },
+  USDC: {
+    address: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU',
+    symbol: 'USDC',
+    name: 'USD Coin',
+    decimals: 6,
+    image: null
+  }
+}
+
 // Wallet state - we'll need to get this from the Phantom wallet component
 const getWalletPublicKey = () => {
   // Try to get the wallet address from window.solana if connected
@@ -440,6 +597,99 @@ const getWalletPublicKey = () => {
     return window.solana.publicKey.toString()
   }
   return null
+}
+
+// Raydium API Functions
+const getRaydiumQuote = async (fromToken, toToken, amount) => {
+  try {
+    console.log('💰 Getting Raydium quote...', { fromToken, toToken, amount })
+    
+    // Convert amount to proper format (account for decimals)
+    const inputToken = availableTokens.value.find(t => t.address === fromToken)
+    const outputToken = availableTokens.value.find(t => t.address === toToken)
+    
+    if (!inputToken || !outputToken) {
+      throw new Error('Token not found in available tokens')
+    }
+    
+    // Convert amount to smallest unit (lamports/atoms)
+    const amountInSmallestUnit = Math.floor(amount * Math.pow(10, inputToken.decimals))
+    
+    const quoteUrl = `${RAYDIUM_SWAP_HOST}/compute/swap-base-in`
+    const params = new URLSearchParams({
+      inputMint: fromToken,
+      outputMint: toToken,
+      amount: amountInSmallestUnit.toString(),
+      slippageBps: '100', // 1% slippage (100 basis points)
+      txVersion: 'V0' // Use versioned transactions
+    })
+    
+    console.log('🔗 Quote URL:', `${quoteUrl}?${params}`)
+    
+    const response = await fetch(`${quoteUrl}?${params}`)
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ Quote response error:', errorText)
+      throw new Error(`Quote failed: ${response.status} - ${errorText}`)
+    }
+    
+    const quote = await response.json()
+    console.log('✅ Raydium quote received:', quote)
+    return quote
+  } catch (error) {
+    console.error('❌ Error getting Raydium quote:', error)
+    throw error
+  }
+}
+
+const createRaydiumSwapTransaction = async (quote, userPublicKey) => {
+  try {
+    console.log('🔧 Creating Raydium swap transaction...')
+    
+    const swapUrl = `${RAYDIUM_SWAP_HOST}/transaction/swap-base-in`
+    
+    // Determine if input/output is SOL
+    const inputToken = availableTokens.value.find(t => t.address === selectedSellToken.value.address)
+    const outputToken = availableTokens.value.find(t => t.address === selectedBuyToken.value.address)
+    
+    const isInputSol = inputToken?.symbol === 'SOL'
+    const isOutputSol = outputToken?.symbol === 'SOL'
+    
+    const swapRequest = {
+      computeUnitPriceMicroLamports: '1000', // Medium priority fee
+      swapResponse: quote,
+      txVersion: 'V0',
+      wallet: userPublicKey,
+      wrapSol: isInputSol,
+      unwrapSol: isOutputSol,
+      inputAccount: isInputSol ? undefined : undefined, // Will be created automatically
+      outputAccount: isOutputSol ? undefined : undefined // Will be created automatically
+    }
+    
+    console.log('📤 Swap request:', swapRequest)
+    
+    const response = await fetch(swapUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(swapRequest)
+    })
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ Swap response error:', errorText)
+      throw new Error(`Swap creation failed: ${response.status} - ${errorText}`)
+    }
+    
+    const swapResponse = await response.json()
+    console.log('✅ Raydium swap transaction created:', swapResponse)
+    return swapResponse
+  } catch (error) {
+    console.error('❌ Error creating Raydium swap transaction:', error)
+    throw error
+  }
 }
 
 // Check if pool exists function
@@ -454,7 +704,7 @@ const checkPoolExists = async (poolAddress) => {
   }
 }
 
-// Swap function
+// Swap function using Raydium API
 const executeSwap = async () => {
   if (!canSwap.value) return
 
@@ -468,34 +718,53 @@ const executeSwap = async () => {
   swapError.value = ''
 
   try {
-    const swapRequest = {
-      from_token: selectedSellToken.value.address,
-      to_token: selectedBuyToken.value.address,
-      amount: parseFloat(sellAmount.value),
-      user_pubkey: userPubkey
-    }
-
-    console.log('Sending swap request:', swapRequest)
-
-    const response = await fetch('https://launchpad-wl8n.onrender.com/api/swap', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(swapRequest)
+    console.log('🔄 Starting Raydium swap process...')
+    
+    // Get quote from Raydium
+    const fromToken = selectedSellToken.value.address
+    const toToken = selectedBuyToken.value.address
+    const amount = parseFloat(sellAmount.value)
+    
+    console.log('📊 Swap details:', {
+      fromToken,
+      toToken,
+      amount,
+      userPubkey
     })
 
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
+    // Step 1: Get quote from Raydium
+    const quote = await getRaydiumQuote(fromToken, toToken, amount)
+    
+    if (!quote || !quote.success || !quote.data || !quote.data.outputAmount) {
+      throw new Error('Failed to get quote from Raydium')
     }
 
-    const result = await response.json()
-    console.log('Swap successful:', result)
+    // Update buy amount with quote
+    const outAmount = parseFloat(quote.data.outputAmount) / Math.pow(10, selectedBuyToken.value.decimals || 6)
+    buyAmount.value = outAmount.toFixed(6)
+    
+    console.log('💰 Quote received:', {
+      inAmount: amount,
+      outAmount: outAmount,
+      priceImpact: quote.data?.priceImpactPct,
+      routeHops: quote.data?.routePlan?.length || 1
+    })
 
-    // Исправляем получение transaction_base64 вместо tx_base64
-    const txBase64 = result.transaction_base64 || result.tx_base64
-    console.log('Received transaction_base64:', txBase64)
+    // Step 2: Create swap transaction
+    const swapResponse = await createRaydiumSwapTransaction(quote, userPubkey)
+    
+    if (!swapResponse || !swapResponse.data || !swapResponse.data.length) {
+      throw new Error('Failed to create swap transaction')
+    }
+
+    // Raydium returns an array of transactions
+    const transactions = swapResponse.data
+    console.log('✅ Raydium transactions created:', transactions.length)
+    
+    // For now, we'll use the first transaction
+    const firstTransaction = transactions[0]
+    const txBase64 = firstTransaction.transaction
+    console.log('✅ Using first transaction:', txBase64)
     
     // Валидируем base64 строку перед декодированием
     if (!txBase64 || typeof txBase64 !== 'string') {
@@ -508,12 +777,13 @@ const executeSwap = async () => {
     }
 
     // Показываем пользователю детали транзакции для подтверждения
-    const confirmMessage = `🔄 Confirm Swap Transaction:
+    const confirmMessage = `🔄 Confirm Raydium Swap Transaction:
 
-${result.instructions}
+From: ${selectedSellToken.value.symbol} ${amount}
+To: ${selectedBuyToken.value.symbol} ${outAmount.toFixed(6)}
 
-Expected output: ${result.estimated_output} tokens
-Pool: ${result.swap_pool}
+Price Impact: ${quote.data?.priceImpactPct ? (parseFloat(quote.data.priceImpactPct) * 100).toFixed(2) : 'N/A'}%
+Route: ${quote.data?.routePlan?.length || 1} hop${quote.data?.routePlan?.length > 1 ? 's' : ''}
 
 Press OK to proceed with Phantom Wallet signature.`
     
@@ -890,13 +1160,85 @@ Network: ${data.network || 'devnet'}`
   }
 }
 
+// Debounce timeout for quote requests
+const quoteTimeout = ref(null)
+
 // Watch sell amount changes
 watch(sellAmount, (newAmount) => {
-  if (selectedBuyToken.value && newAmount) {
-    buyAmount.value = (parseFloat(newAmount) * parseFloat(exchangeRate.value)).toFixed(6)
-  } else {
-    buyAmount.value = ''
+  // Debounce quote requests
+  clearTimeout(quoteTimeout.value)
+  quoteTimeout.value = setTimeout(() => {
+    getQuote()
+  }, 500) // Wait 500ms after user stops typing
+})
+
+// Watch token selection changes
+watch([selectedSellToken, selectedBuyToken], () => {
+  // Get quote when tokens change
+  clearTimeout(quoteTimeout.value)
+  quoteTimeout.value = setTimeout(() => {
+    getQuote()
+  }, 100)
+})
+
+// Watch for SOL balance changes to update selectedSellToken balance
+watch(solBalance, (newBalance) => {
+  if (selectedSellToken.value && selectedSellToken.value.symbol === 'SOL') {
+    selectedSellToken.value.balance = newBalance
   }
+  
+  // Update SOL balance in availableTokens array
+  const solToken = availableTokens.value.find(token => token.symbol === 'SOL')
+  if (solToken) {
+    solToken.balance = newBalance
+  }
+})
+
+// Helper functions for quote display
+const getPriceImpactText = () => {
+  if (!currentQuote.value || !currentQuote.value.data?.priceImpactPct) {
+    return '< 0.1%'
+  }
+  
+  const impact = parseFloat(currentQuote.value.data.priceImpactPct) * 100
+  if (impact < 0.1) return '< 0.1%'
+  if (impact < 1) return `${impact.toFixed(2)}%`
+  if (impact < 5) return `${impact.toFixed(1)}%`
+  return `${impact.toFixed(1)}%`
+}
+
+const getPriceImpactClass = () => {
+  if (!currentQuote.value || !currentQuote.value.data?.priceImpactPct) {
+    return 'price-impact-low'
+  }
+  
+  const impact = parseFloat(currentQuote.value.data.priceImpactPct) * 100
+  if (impact < 1) return 'price-impact-low'
+  if (impact < 5) return 'price-impact-medium'
+  return 'price-impact-high'
+}
+
+const getNetworkFeeText = () => {
+  // Raydium doesn't provide fee in quote, so we use estimated fee
+  return '~0.00025 SOL'
+}
+
+// Initialize component
+onMounted(async () => {
+  console.log('🚀 Initializing SwapPage with Raydium integration...')
+  
+  // Load tokens from Raydium API
+  await loadRaydiumTokens()
+  
+  // Set default sell token to SOL
+  if (availableTokens.value.length > 0) {
+    const solToken = availableTokens.value.find(t => t.symbol === 'SOL')
+    if (solToken) {
+      selectedSellToken.value = solToken
+    }
+  }
+  
+  console.log('✅ SwapPage initialized')
 })
 </script>
 
@@ -1016,8 +1358,8 @@ watch(sellAmount, (newAmount) => {
 }
 
 .token-icon {
-  width: 20px;
-  height: 20px;
+  width: 30px;
+  height: 30px;
   flex-shrink: 0;
 }
 
@@ -1192,6 +1534,23 @@ watch(sellAmount, (newAmount) => {
   color: #ffffff;
   font-weight: 500;
   text-align: right;
+}
+
+/* Price impact classes */
+.price-impact-low {
+  color: #10b981;
+}
+
+.price-impact-medium {
+  color: #f59e0b;
+}
+
+.price-impact-high {
+  color: #ef4444;
+}
+
+.quote-details {
+  width: 100%;
 }
 
 /* Settings Modal */

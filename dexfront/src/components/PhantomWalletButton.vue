@@ -31,7 +31,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, inject } from 'vue'
 import { PhantomIcon, DisconnectIcon } from './Icons.vue'
 
 export default {
@@ -41,6 +41,8 @@ export default {
     DisconnectIcon
   },
   setup() {
+    // Inject global SOL balance update function
+    const updateSolBalance = inject('updateSolBalance', () => {})
     // Wallet state
     const isConnected = ref(false)
     const isConnecting = ref(false)
@@ -142,7 +144,12 @@ export default {
         const connection = new Connection('https://api.devnet.solana.com')
         const publicKey = new PublicKey(walletAddress.value)
         const balanceInLamports = await connection.getBalance(publicKey)
-        balance.value = (balanceInLamports / LAMPORTS_PER_SOL).toFixed(4)
+        const balanceValue = (balanceInLamports / LAMPORTS_PER_SOL).toFixed(4)
+        balance.value = balanceValue
+        
+        // Update global SOL balance state
+        updateSolBalance(balanceValue)
+        console.log('✅ SOL balance updated globally:', balanceValue)
       } catch (error) {
         console.error('Failed to get balance:', error)
       }

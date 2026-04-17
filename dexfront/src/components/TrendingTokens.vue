@@ -16,13 +16,13 @@
       </div>
     </div>
     
-    <div class="trending-scroll-container" ref="scrollContainer">
+    <div class="trending-container">
+      <div v-if="tokens.length === 0" class="no-tokens">
+        <p>No trending tokens available</p>
+      </div>
       <div class="trending-grid">
-        <div v-if="tokens.length === 0" class="no-tokens">
-          <p>No trending tokens available</p>
-        </div>
         <div 
-          v-for="token in tokens" 
+          v-for="token in displayedTokens" 
           :key="token.id"
           class="trending-card"
           @click="selectToken(token)"
@@ -56,7 +56,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps({
   tokens: {
@@ -65,24 +65,53 @@ const props = defineProps({
   }
 })
 
-const scrollContainer = ref(null)
 const emit = defineEmits(['token-selected'])
+
+// Reactive window width
+const windowWidth = ref(window.innerWidth)
+
+// Update window width on resize
+const updateWindowWidth = () => {
+  windowWidth.value = window.innerWidth
+}
+
+onMounted(() => {
+  window.addEventListener('resize', updateWindowWidth)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateWindowWidth)
+})
+
+// Computed property to limit displayed tokens based on screen size
+const displayedTokens = computed(() => {
+  let maxTokens = 4 // Default for desktop
+  
+  if (windowWidth.value < 360) {
+    maxTokens = 1 // Very small mobile
+  } else if (windowWidth.value < 480) {
+    maxTokens = 2 // Small mobile
+  } else if (windowWidth.value < 768) {
+    maxTokens = 2 // Mobile
+  } else if (windowWidth.value < 1024) {
+    maxTokens = 3 // Tablet
+  }
+  
+  return props.tokens.slice(0, maxTokens)
+})
 
 const selectToken = (token) => {
   console.log('Selected token:', token)
   emit('token-selected', token)
 }
 
+// Keep navigation functions for potential future use
 const scrollLeft = () => {
-  if (scrollContainer.value) {
-    scrollContainer.value.scrollBy({ left: -300, behavior: 'smooth' })
-  }
+  // Functionality can be added later if needed
 }
 
 const scrollRight = () => {
-  if (scrollContainer.value) {
-    scrollContainer.value.scrollBy({ left: 300, behavior: 'smooth' })
-  }
+  // Functionality can be added later if needed
 }
 </script>
 
@@ -129,24 +158,18 @@ const scrollRight = () => {
   color: #ffffff;
 }
 
-.trending-scroll-container {
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.trending-scroll-container::-webkit-scrollbar {
-  display: none;
+.trending-container {
+  width: 100%;
 }
 
 .trending-grid {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 20px;
-  padding-bottom: 8px;
 }
 
 .no-tokens {
-  min-width: 280px;
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -159,7 +182,6 @@ const scrollRight = () => {
 }
 
 .trending-card {
-  min-width: 280px;
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -167,6 +189,7 @@ const scrollRight = () => {
   padding: 20px;
   cursor: pointer;
   transition: all 0.3s ease;
+  width: 100%;
 }
 
 .trending-card:hover {
@@ -248,6 +271,7 @@ const scrollRight = () => {
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -262,8 +286,12 @@ const scrollRight = () => {
     font-size: 22px;
   }
   
+  .trending-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+  }
+  
   .trending-card {
-    min-width: 260px;
     padding: 18px;
   }
   
@@ -301,17 +329,12 @@ const scrollRight = () => {
     height: 32px;
   }
   
-  .trending-scroll-container {
-    margin: 0 -4px;
-    padding: 0 4px;
-  }
-  
   .trending-grid {
+    grid-template-columns: repeat(2, 1fr);
     gap: 16px;
   }
   
   .trending-card {
-    min-width: 240px;
     padding: 16px;
   }
   
@@ -350,6 +373,7 @@ const scrollRight = () => {
   .token-description {
     font-size: 13px;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
   }
 }
 
@@ -368,17 +392,12 @@ const scrollRight = () => {
     height: 28px;
   }
   
-  .trending-scroll-container {
-    margin: 0 -2px;
-    padding: 0 2px;
-  }
-  
   .trending-grid {
+    grid-template-columns: repeat(2, 1fr);
     gap: 12px;
   }
   
   .trending-card {
-    min-width: 220px;
     padding: 14px;
   }
   
@@ -413,8 +432,12 @@ const scrollRight = () => {
 
 /* Very Small Mobile */
 @media (max-width: 360px) {
+  .trending-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
   .trending-card {
-    min-width: 200px;
     padding: 12px;
   }
   

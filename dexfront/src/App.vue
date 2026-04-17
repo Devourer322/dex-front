@@ -29,9 +29,27 @@ const toggleMobileMenu = () => {
   isMobileMenuOpen.value = !isMobileMenuOpen.value
 }
 
+// Global SOL balance state
+const solBalance = ref('0.0000')
+const solPriceUSD = ref(198) // SOL price in USD
+
+const updateSolBalance = (balance) => {
+  solBalance.value = balance
+}
+
+const updateSolPrice = (price) => {
+  solPriceUSD.value = price
+}
+
 // Provide mobile menu functionality
 provide('toggleMobileMenu', toggleMobileMenu)
 provide('isMobileMenuOpen', isMobileMenuOpen)
+
+// Provide global SOL balance state
+provide('solBalance', solBalance)
+provide('solPriceUSD', solPriceUSD)
+provide('updateSolBalance', updateSolBalance)
+provide('updateSolPrice', updateSolPrice)
 </script>
 
 <template>

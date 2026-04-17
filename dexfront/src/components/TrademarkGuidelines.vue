@@ -9,7 +9,7 @@
       <div class="guidelines-content">
         <div class="intro-section">
           <p class="intro-text">
-            pump.fun respects trademarks and takes steps to ensure that others' trademark rights are respected by creators using pump.fun.
+            DApp respects trademarks and takes steps to ensure that others' trademark rights are respected by creators using DApp.
           </p>
           
           <p class="definition-text">
@@ -17,7 +17,7 @@
           </p>
           
           <p class="purpose-text">
-            pump.fun's trademark guidelines are intended to avoid confusion about who provides, is affiliated with or otherwise endorses a creator's token, livestream, comments, or any other content. Please note that these guidelines apply only to the website accessible from the "pump.fun" or "swap.pump.fun" urls. These guidelines do not apply information which is stored on a blockchain, or any website that we do not control. To that end, our trademark guidelines are straightforward:
+            DApp's trademark guidelines are intended to avoid confusion about who provides, is affiliated with or otherwise endorses a creator's token, livestream, comments, or any other content. Please note that these guidelines apply only to the website accessible from the "DApp" or "swap.DApp" urls. These guidelines do not apply information which is stored on a blockchain, or any website that we do not control. To that end, our trademark guidelines are straightforward:
           </p>
         </div>
 
@@ -45,7 +45,7 @@
 
           <div class="important-note">
             <p>Have a great time making fun of, enjoying, and praising others—but do not pretend you are them in a way that would confuse an ordinary person.</p>
-            <p>pump.fun does not adjudicate allegations of trademark infringement. Any dispute is solely between the trademark owner and the relevant creator(s).</p>
+            <p>DApp does not adjudicate allegations of trademark infringement. Any dispute is solely between the trademark owner and the relevant creator(s).</p>
           </div>
         </div>
 
@@ -53,7 +53,7 @@
           <h2 class="section-title">Reporting Trademark Infringement</h2>
           
           <p class="section-intro">
-            If you believe a creator on pump.fun is violating your trademark, please send an email to <a href="mailto:legal@pump.fun" class="email-link">legal@pump.fun</a> that includes the following:
+            If you believe a creator on DApp is violating your trademark, please send an email to <a href="mailto:legal@DApp" class="email-link">legal@DApp</a> that includes the following:
           </p>
 
           <div class="requirements-list">
@@ -74,27 +74,27 @@
           </div>
 
           <p class="notification-note">
-            Where possible and appropriate, pump.fun will notify the impacted creator of the claimed trademark violation.
+            Where possible and appropriate, DApp will notify the impacted creator of the claimed trademark violation.
           </p>
         </div>
 
         <div class="response-section">
           <h2 class="section-title">Response to Trademark Infringement Reports</h2>
           
-          <p class="section-intro">When pump.fun receives a trademark infringement report, pump.fun will:</p>
+          <p class="section-intro">When DApp receives a trademark infringement report, DApp will:</p>
 
           <ol class="response-steps">
             <li>Assess the report to determine if it's legitimate and all information was provided;</li>
-            <li>Evaluate the report against these guidelines, pump.fun's content moderation policy, and any other relevant policy;</li>
+            <li>Evaluate the report against these guidelines, DApp's content moderation policy, and any other relevant policy;</li>
             <li>If we determine, in our sole discretion, that content on our website violates the trademark rights of another, we will remove that content from our website.</li>
             <li>If we take action, we may notify the creator about the report where possible;</li>
-            <li>pump.fun allows the creator to submit a response, which may be done by sending an email to <a href="mailto:legal@pump.fun" class="email-link">legal@pump.fun</a>, but pump.fun does not adjudicate disputes; and</li>
+            <li>DApp allows the creator to submit a response, which may be done by sending an email to <a href="mailto:legal@DApp" class="email-link">legal@DApp</a>, but DApp does not adjudicate disputes; and</li>
             <li>The trademark owner may seek to resolve any and all violations directly with the creator.</li>
           </ol>
 
           <div class="creator-response">
             <p class="response-intro">
-              If you (the creator) are alerted to a violation and do not believe that one has occurred, you should submit the following information to <a href="mailto:legal@pump.fun" class="email-link">legal@pump.fun</a> in response:
+              If you (the creator) are alerted to a violation and do not believe that one has occurred, you should submit the following information to <a href="mailto:legal@DApp" class="email-link">legal@DApp</a> in response:
             </p>
 
             <ul class="response-requirements">
@@ -106,12 +106,12 @@
 
         <div class="violations-section">
           <h2 class="section-title">Repeat Violations</h2>
-          <p>pump.fun may terminate a creator's access if pump.fun determines that the creator is a repeat and intentional trademark violator.</p>
+          <p>DApp may terminate a creator's access if DApp determines that the creator is a repeat and intentional trademark violator.</p>
         </div>
 
         <div class="updates-section">
           <h2 class="section-title">Policy Updates</h2>
-          <p>pump.fun reserves the right to update or revise this policy at any time. Continued use of our services constitutes acceptance of any revisions.</p>
+          <p>DApp reserves the right to update or revise this policy at any time. Continued use of our services constitutes acceptance of any revisions.</p>
         </div>
       </div>
     </div>

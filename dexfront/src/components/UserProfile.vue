@@ -36,7 +36,7 @@
         <div class="profile-header">
           <div class="profile-avatar">
             <img 
-              :src="userProfile.avatar_url || 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&dpr=1'" 
+              :src="'https://api.dicebear.com/7.x/avataaars/svg?seed=profile&backgroundColor=6366f1,8b5cf6,ec4899,f59e0b,10b981'" 
               :alt="userProfile.username || 'Profile'" 
             />
           </div>
@@ -130,24 +130,20 @@
             <div class="balance-item">
               <div class="balance-coin">
                 <div class="coin-icon">
-                  <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                    <circle cx="16" cy="16" r="16" fill="url(#solana-gradient)"/>
-                    <path d="M8 12h16l-2-2H10l-2 2zm0 8h16l-2 2H10l-2-2zm16-4H8l2-2h12l2 2z" fill="white"/>
-                    <defs>
-                      <linearGradient id="solana-gradient" x1="0" y1="0" x2="32" y2="32">
-                        <stop stop-color="#9945FF"/>
-                        <stop offset="1" stop-color="#14F195"/>
-                      </linearGradient>
-                    </defs>
-                  </svg>
+                  <img 
+                    src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/sol.svg" 
+                    alt="SOL" 
+                    width="32" 
+                    height="32"
+                  />
                 </div>
                 <div class="coin-info">
                   <span class="coin-name">Solana balance</span>
-                  <span class="coin-amount">0.0459 SOL</span>
+                  <span class="coin-amount">{{ solBalance }} SOL</span>
                 </div>
               </div>
               <div class="balance-mcap">-</div>
-              <div class="balance-value">$7</div>
+              <div class="balance-value">${{ solBalanceUSD }}</div>
             </div>
           </div>
           
@@ -165,26 +161,53 @@
         </div>
       </div>
 
-      <!-- Right Side - Who to Follow -->
-      <div class="who-to-follow">
-        <h3 class="follow-title">who to follow</h3>
-        
-        <div class="follow-suggestions">
-          <div 
-            v-for="user in suggestedUsers" 
-            :key="user.id"
-            class="follow-suggestion"
-          >
-            <div class="suggestion-info">
-              <div class="suggestion-avatar">
-                <img :src="user.avatar" :alt="user.name" />
+      <!-- Right Side - Sidebar Container -->
+      <div class="right-sidebar">
+        <!-- Who to Follow Section -->
+        <div class="who-to-follow">
+          <h3 class="follow-title">who to follow</h3>
+          
+          <div class="follow-suggestions">
+            <div 
+              v-for="user in suggestedUsers" 
+              :key="user.id"
+              class="follow-suggestion"
+            >
+              <div class="suggestion-info">
+                <div class="suggestion-avatar">
+                  <img :src="user.avatar" :alt="user.name" />
+                </div>
+                <div class="suggestion-details">
+                  <span class="suggestion-name">{{ user.name }}</span>
+                  <span class="suggestion-followers">{{ user.followers }} followers</span>
+                </div>
               </div>
-              <div class="suggestion-details">
-                <span class="suggestion-name">{{ user.name }}</span>
-                <span class="suggestion-followers">{{ user.followers }} followers</span>
-              </div>
+              <button class="follow-btn">follow</button>
             </div>
-            <button class="follow-btn">follow</button>
+          </div>
+        </div>
+
+        <!-- Popular People Section -->
+        <div class="popular-people">
+          <h3 class="popular-title">Popular people</h3>
+          
+          <div class="popular-list">
+            <div 
+              v-for="person in popularPeople" 
+              :key="person.id"
+              class="popular-person"
+            >
+              <div class="person-info">
+                <div class="person-avatar">
+                  <img :src="person.avatar" :alt="person.name" />
+                </div>
+                <div class="person-details">
+                  <span class="person-name">{{ person.name }}</span>
+                  <span class="person-followers">{{ person.followers }} followers</span>
+                </div>
+              </div>
+              <button class="follow-btn">follow</button>
+            </div>
           </div>
         </div>
       </div>
@@ -193,11 +216,22 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, inject, computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
 const activeTab = ref('balances')
+
+// Inject global SOL balance state
+const solBalance = inject('solBalance', ref('0.0000'))
+const solPriceUSD = inject('solPriceUSD', ref(198))
+
+// Computed SOL balance in USD
+const solBalanceUSD = computed(() => {
+  const balance = parseFloat(solBalance.value) || 0
+  const price = parseFloat(solPriceUSD.value) || 198
+  return (balance * price).toFixed(2)
+})
 
 // User profile state
 const userProfile = ref(null)
@@ -210,31 +244,65 @@ const suggestedUsers = ref([
     id: 1,
     name: 'Sol_reaper',
     followers: '1904',
-    avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=60&h=60&dpr=1'
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sol_reaper&backgroundColor=6366f1,8b5cf6,ec4899,f59e0b,10b981'
   },
   {
     id: 2,
     name: 'tecro',
     followers: '1899',
-    avatar: 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=60&h=60&dpr=1'
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=tecro&backgroundColor=6366f1,8b5cf6,ec4899,f59e0b,10b981'
   },
   {
     id: 3,
     name: 'fwogcto',
     followers: '1899',
-    avatar: 'https://images.pexels.com/photos/33535/monkey-ape-thinking-mimic.jpg?auto=compress&cs=tinysrgb&w=60&h=60&dpr=1'
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=fwogcto&backgroundColor=6366f1,8b5cf6,ec4899,f59e0b,10b981'
   },
   {
     id: 4,
     name: 'TrojansDad',
     followers: '1894',
-    avatar: 'https://images.pexels.com/photos/730547/pexels-photo-730547.jpeg?auto=compress&cs=tinysrgb&w=60&h=60&dpr=1'
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=TrojansDad&backgroundColor=6366f1,8b5cf6,ec4899,f59e0b,10b981'
   },
   {
     id: 5,
     name: 'mogbrah',
     followers: '1891',
-    avatar: 'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?auto=compress&cs=tinysrgb&w=60&h=60&dpr=1'
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=mogbrah&backgroundColor=6366f1,8b5cf6,ec4899,f59e0b,10b981'
+  }
+])
+
+// Popular people data
+const popularPeople = ref([
+  {
+    id: 1,
+    name: 'crypto_whale',
+    followers: '15.2K',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=crypto_whale&backgroundColor=6366f1,8b5cf6,ec4899,f59e0b,10b981'
+  },
+  {
+    id: 2,
+    name: 'solana_dev',
+    followers: '12.8K',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=solana_dev&backgroundColor=6366f1,8b5cf6,ec4899,f59e0b,10b981'
+  },
+  {
+    id: 3,
+    name: 'defi_master',
+    followers: '9.7K',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=defi_master&backgroundColor=6366f1,8b5cf6,ec4899,f59e0b,10b981'
+  },
+  {
+    id: 4,
+    name: 'nft_collector',
+    followers: '8.3K',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=nft_collector&backgroundColor=6366f1,8b5cf6,ec4899,f59e0b,10b981'
+  },
+  {
+    id: 5,
+    name: 'trading_guru',
+    followers: '7.1K',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=trading_guru&backgroundColor=6366f1,8b5cf6,ec4899,f59e0b,10b981'
   }
 ])
 
@@ -659,6 +727,14 @@ onMounted(() => {
   font-size: 16px;
 }
 
+/* Right Sidebar Container */
+.right-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 320px;
+}
+
 .who-to-follow {
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(10px);
@@ -666,6 +742,80 @@ onMounted(() => {
   border-radius: 16px;
   padding: 24px;
   height: fit-content;
+}
+
+/* Popular People Styles */
+.popular-people {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+  height: fit-content;
+}
+
+.popular-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 20px;
+}
+
+.popular-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.popular-person {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.person-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.person-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.person-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.person-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.person-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.person-followers {
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 500;
 }
 
 .follow-title {
@@ -758,7 +908,7 @@ onMounted(() => {
     gap: 30px;
   }
   
-  .who-to-follow {
+  .right-sidebar {
     width: 280px;
   }
   
@@ -886,7 +1036,15 @@ onMounted(() => {
     padding: 20px;
   }
   
+  .popular-people {
+    padding: 20px;
+  }
+  
   .follow-title {
+    font-size: 16px;
+  }
+  
+  .popular-title {
     font-size: 16px;
   }
   
@@ -980,7 +1138,15 @@ onMounted(() => {
     padding: 16px;
   }
   
+  .popular-people {
+    padding: 16px;
+  }
+  
   .follow-title {
+    font-size: 15px;
+  }
+  
+  .popular-title {
     font-size: 15px;
   }
   
@@ -1026,6 +1192,10 @@ onMounted(() => {
   }
   
   .who-to-follow {
+    padding: 14px;
+  }
+  
+  .popular-people {
     padding: 14px;
   }
 }

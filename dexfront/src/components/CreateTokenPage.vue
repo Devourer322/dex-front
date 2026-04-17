@@ -386,7 +386,7 @@ const createToken = async () => {
     console.log('Creating token with data:', tokenData)
 
     // 4. Отправляем запрос на создание токена
-    const result = await fetch('https://launchpad-wl8n.onrender.com/api/bonding-curve/create-real-token', {
+    const result = await fetch('http://localhost:3000/api/bonding-curve/create-real-token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
